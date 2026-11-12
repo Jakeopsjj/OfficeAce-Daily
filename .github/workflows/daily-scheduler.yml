@@ -1,0 +1,18 @@
+name: Daily scheduler
+on:
+  schedule:
+    - cron: "10 1 * * *"
+  workflow_dispatch:
+permissions:
+  actions: write
+  contents: read
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch upstream daily.yml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run daily.yml --repo "${{ github.repository }}"
+          echo "dispatched daily.yml"
