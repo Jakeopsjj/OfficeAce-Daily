@@ -6,6 +6,8 @@
 
 **果办（OfficeAce / OfficeClaw）每日奖励领取工具，内置 V11-HMAC-SHA256 签名与领取前订阅 / claim 回执额度核对。**
 
+> 当前版本：**v1.2.2**（2026-11-13） · 最新更新：领取后重读订阅并按 current_value 核对实际新增额度
+
 [简体中文](README.md) · [English](docs/README.en.md) · [繁體中文](docs/README.zh-Hant.md) · [日本語](docs/README.ja.md) · [한국어](docs/README.ko.md) · [Português (BR)](docs/README.pt-BR.md)
 
 <img src="https://img.shields.io/github/v/release/L0NE-6/OfficeAce-Daily?style=for-the-badge&label=Release&color=2ea44f&logo=github" />
@@ -44,16 +46,16 @@
 | :--- | :--- |
 | **用途** | 领取果办（OfficeAce / OfficeClaw）当天可用的每日奖励与一次性新人礼。 |
 | **输入** | `OFFICEACE_TOKENS`，或 `OFFICEACE_AK` / `OFFICEACE_SK` / `OFFICEACE_STS` / `OFFICEACE_PROJECT_ID` / `OFFICEACE_BASE_URL` 单账号变量。 |
-| **输出** | 分账号领取结果、领取前订阅与 claim 回执的额度差值、奖励额度合计与可选企业微信 / PushPlus 推送。 |
+| **输出** | 分账号领取结果、领取前后订阅的额度差值、奖励额度合计与可选企业微信 / PushPlus 推送。 |
 | **部署** | 青龙面板、GitHub Actions、Windows / Linux 本地运行。 |
 | **依赖** | Python 3.8+，仅使用标准库，无需安装第三方包。 |
-| **成功判据** | 领取前读取订阅，claim 回执返回最新奖励列表时按 `current_value` 实际增量报告；接口幂等时明确显示今日无可领奖励或已领过。 |
+| **成功判据** | 领取前后订阅均可核对，且按活动 `current_value` 看到真实增量，或 claim 明确返回空列表表示今日已结算；任一侧读数失败均标记未确认或失败。 |
 
 ## ✨ 核心能力
 
 - **一次领取当天奖励**：每日签到与一次性新人礼由同一个 claim 动作下发。
 - **V11-HMAC-SHA256**：内置完整签名实现，按区域作用域 `cn-southwest-2/apic` 生成请求。
-- **领取对账**：先读 subscription，再 claim，用回执中的最新奖励列表计算实际增量。
+- **领取对账**：先读 subscription，claim 后重读订阅，用前后活动额度确认实际增量。
 - **多账号**：`OFFICEACE_TOKENS` 支持换行或 `&` 分隔。
 - **只读核对**：`--query` 只查询订阅与奖励额度，不发起领取。
 - **单文件自包含**：青龙只需上传 `officeace_daily.py`。
@@ -199,13 +201,15 @@ schedule:
 
 ```text
 GET  /v1/subscription             # 领取前基线
-POST /v1/subscription/bonus/claim # 回执用于增量核对
+POST /v1/subscription/bonus/claim # 触发当天结算
+GET  /v1/subscription             # 领取后回读，用于增量核对
 ```
 
 - 每日签到与一次性新人礼由服务端同一次动作下发。
 - 当天已领取时按幂等处理，不重复计分。
-- 能读取领取前基线且 claim 回执包含最新额度时，报告实际增量。
-- 领取前读数失败时，脚本仍会尝试 claim，并在输出中明确“已签到”而不是编造新增数字。
+- 领取前后订阅都可读取时，按活动 `current_value` 报告实际增量。
+- claim 明确返回空列表时，显示“今日无可领奖励或已领过”。
+- 领取前或领取后订阅读数失败时，脚本标记“结果未确认”，不会声称领取成功。
 - 单个账号异常不会阻止其余账号继续执行。
 
 ## 🗂️ 数据文件
@@ -264,7 +268,7 @@ python officeace_daily.py --query
 
 ## 📦 版本与发布
 
-- 当前发布版：`v1.2.1`（2026-11-04，文档发行版；脚本逻辑仍为 `v1.2.0`）。
+- 当前发布版：`v1.2.2`（2026-11-12，订阅前后真实增量回读）。
 - 历史版本保留在 [Releases](https://github.com/L0NE-6/OfficeAce-Daily/releases)。
 - 更新记录见 [CHANGELOG.md](CHANGELOG.md)。
 
